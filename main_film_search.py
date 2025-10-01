@@ -37,7 +37,7 @@ GET_MIN_MAX_YEAR = """SELECT MIN(release_year), MAX(release_year)
 
 
 def get_category_code(data):
-    selected_category = input("Enter category or num: ").strip()
+    selected_category = input("Выберите жанр(или номер): ").strip()
     selected_code = ""
     genre_name = ""
     if selected_category.isdigit():
@@ -82,15 +82,13 @@ def custom_year(min_year, max_year):
 
             return start_year, end_year
 
-
         except ValueError:
             print("Введите корректный формат: '2005-2012' или '2010'")
         except Exception as e:
             print(f"Ошибка ввода: {e}")
 
 
-def execute_search(cursor, count_query, sql_query, search_pattern):
-
+def execute_search(cursor, count_query, sql_query, search_pattern, txt):
     cursor.execute(count_query, search_pattern)
     total_rows = cursor.fetchone()[0]
 
@@ -102,8 +100,7 @@ def execute_search(cursor, count_query, sql_query, search_pattern):
     status = "successful"
     print(f"Всего найдено фильмов: {total_rows}")
     cursor.execute(sql_query, search_pattern)
-    formatter.formated_search(cursor, total_rows)
-
+    formatter.formated_search(cursor, total_rows, txt)
     # print(total_rows, status)
     return total_rows, status
 
@@ -111,7 +108,7 @@ def execute_search(cursor, count_query, sql_query, search_pattern):
 def search_by_keyword(cursor):
     "Поиск по ключевому слову"
     function_name = "search_by_keyword"
-    search_word = input("Enter keyword: ").strip()
+    search_word = input("Введите поисковое слово(а): ").strip()
 
     if not search_word:
         print("Поисковый запрос не может быть пустым")
@@ -119,7 +116,7 @@ def search_by_keyword(cursor):
 
     search_pattern = (f"%{search_word}%",)
     params = {"keyword": search_word}
-    result = execute_search(cursor, COUNT_FILMS_BY_KEYWORD, GET_FILMS_BY_KEYWORD, search_pattern)
+    result = execute_search(cursor, COUNT_FILMS_BY_KEYWORD, GET_FILMS_BY_KEYWORD, search_pattern, search_word)
     total_rows, status = result
 
     log_data = {
@@ -132,8 +129,6 @@ def search_by_keyword(cursor):
     # print(log_data)
     log_writer.load_statistic(connector.collection, log_data)
     return True
-
-
 
 
 def search_by_category_year(cursor):
@@ -156,7 +151,7 @@ def search_by_category_year(cursor):
     search_year1, search_year2 = year1, year2
     if res not in ['y', 'н', 'yes', 'да', '']:
         search_year1, search_year2 = custom_year(year1, year2)
-    # print(f"Будет выполнен поиск за период: {search_year1}-{search_year2}")
+    print(f"Будет выполнен поиск за период: {search_year1}-{search_year2}")
 
     search_pattern = (selected_code, search_year1, search_year2)
     params = {
@@ -164,7 +159,8 @@ def search_by_category_year(cursor):
         "year_from": search_year1,
         "year_to": search_year2
     }
-    result = execute_search(cursor, COUNT_FILMS_BY_CATEGORY_YEAR, GET_FILMS_BY_CATEGORY_YEAR, search_pattern)
+    result = execute_search(cursor, COUNT_FILMS_BY_CATEGORY_YEAR, GET_FILMS_BY_CATEGORY_YEAR, search_pattern,
+                            genre_name)
 
     total_rows, status = result
     # print(f"По категории --{genre_name}-- {search_year1}-{search_year2} всего найдено фильмов: {total_rows}")

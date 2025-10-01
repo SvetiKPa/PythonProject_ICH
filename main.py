@@ -7,15 +7,14 @@ def main():
     with connector.create_mysql_connection() as connection:
         cursor = connection.cursor()
         while True:
-            print("=" * 50)
             title = "Поиск фильмов в базе данных Sakila"
             print("=" * 50)
             print(title.center(50))
             print("=" * 50)
-            print(f"{'1.':<3} Поиск по названию фильма")
-            print(f"{'2.':<3} Поиск по жанру и году выпуска")
-            print(f"{'3.':<3} Статистика поисков")
-            print(f"{'0.':<3} Выход")
+            print(f"{'1.':<5} Поиск по названию фильма")
+            print(f"{'2.':<5} Поиск по жанру и году выпуска")
+            print(f"{'3.':<5} Статистика поисков")
+            print(f"{'0.':<5} Выход")
             print("-" * 50)
             choice = input("Выберите действие (0-3): ").strip()
 

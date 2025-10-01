@@ -1,12 +1,13 @@
-def formated_search(cursor, total_rows, current_page=1, limit=10):
+def formated_search(cursor, total_rows, txt='', current_page=1, limit=10):
+    txt = txt.upper()
     displayed_count = 0
     while displayed_count < total_rows:
         films = cursor.fetchmany(limit)
 
-        print(f"Показано фильмов: {len(films)} из {total_rows} - порция {current_page}")
+        print(f"По запросу ={txt}= показано фильмов : {len(films)} из {total_rows} - порция {current_page}")
         for i, film in enumerate(films, start=1):
             film_id, film_name, category, year = film
-            print(f"{displayed_count + i:2d}. {film_name:<30} - {year}")
+            print(f"{displayed_count + i:2d}. {film_name:<35} - {year}")
 
         displayed_count += len(films)
         current_page += 1
