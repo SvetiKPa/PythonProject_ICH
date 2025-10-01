@@ -1,7 +1,3 @@
-# Создайте функции для:
-# ● вывода самых популярных запросов
-# ● вывода последних уникальных запросов
-
 def report_popular_keywords(collection, search_type="keyword", limit=5):
     try:
         if search_type == "keyword":
@@ -45,11 +41,24 @@ def report_popular_keywords(collection, search_type="keyword", limit=5):
         print(f"Ошибка: попробуйте позже! {e}")
 
 
-def report_unique_searches(collection, limit=10):
+def report_unique_searches(collection, search_type='all', limit=10):
+    """
+    Уникальные поиски с фильтрацией по типу
+
+    Args:
+        search_type: "all" - все, "keyword" - только слова, "category" - только жанры
+    """
+    if search_type == "keyword":
+        type_filter = {"search_type": "search_by_keyword"}
+    elif search_type == "category":
+        type_filter = {"search_type": "search_by_category"}
+    else:  # "all"
+        type_filter = {"search_type": {"$in": ["search_by_keyword", "search_by_category"]}}
+
     try:
         pipeline = [
             {"$match": {
-                "search_type": {"$in": ["search_by_keyword", "search_by_category"]},
+                **type_filter,
                 "params.keyword": {"$exists": True, "$ne": ""}
             }},
             {"$sort": {"timestamp": -1}},
@@ -68,7 +77,13 @@ def report_unique_searches(collection, limit=10):
 
         results = list(collection.aggregate(pipeline))
 
-        print(f"ПОСЛЕДНИЕ {limit} УНИКАЛЬНЫХ ЗАПРОСОВ:")
+        if search_type == "keyword":
+            title = "УНИКАЛЬНЫХ ЗАПРОСОВ по КЛЮЧЕВЫМ СЛОВАМ"
+        elif search_type == "category":
+            title = "УНИКАЛЬНЫХ ЗАПРОСОВ по ЖАНРАМ"
+        else:
+            title = "УНИКАЛЬНЫХ ЗАПРОСОВ"
+        print(f"ПОСЛЕДНИЕ {limit} {title}:")
         print("-" * 50)
 
         for i, item in enumerate(results, 1):

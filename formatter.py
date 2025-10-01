@@ -1,4 +1,3 @@
-
 def formated_search(cursor, total_rows, current_page=1, limit=10):
     displayed_count = 0
     while displayed_count < total_rows:
@@ -13,7 +12,8 @@ def formated_search(cursor, total_rows, current_page=1, limit=10):
         current_page += 1
 
         if displayed_count < total_rows:
-            res = input(f"\nВывести следующие {min(limit, total_rows - displayed_count)} фильмов? (Y/N): ").strip().lower()
+            res = input(
+                f"\nВывести следующие {min(limit, total_rows - displayed_count)} фильмов? (Y/N): ").strip().lower()
             if res in ['n', 'т', 'no']:
                 break
 

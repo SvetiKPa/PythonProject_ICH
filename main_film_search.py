@@ -1,38 +1,39 @@
-# ○По ключевому слову
-# ■ Поиск по названию фильма
-# ■ Результат ограничен 10 фильмами
-# ■ По запросу пользователя отображаются следующие 10 результатов, или пока не закончатся
-#
-# ○ По жанру и диапазону годов выпуска
-# ■ Перед вводом пользователю показываются:
-#     ● Список всех жанров из таблицы жанров
-#     ●Минимальный и максимальный год выпуска фильмов в базе
-# ■ Указывается нижняя и верхняя граница, например: от 2005 до 2012, или конкретный год
-# ■ По запросу пользователя отображаются следующие 10 результатов, или пока не закончатся
-
+import connector
 import formatter
 import log_writer
 import datetime
 
-COUNT_FILMS_BY_KEYWORD = """SELECT count(film_id) FROM film WHERE title LIKE %s """
-GET_FILMS_BY_KEYWORD = """SELECT film.film_id, film.title, category.name, film.release_year 
-                        FROM film 
-                        JOIN film_category ON film_category.film_id = film.film_id
-                        JOIN category ON film_category.category_id = category.category_id
-                        WHERE title LIKE %s ORDER BY release_year desc"""
+COUNT_FILMS_BY_KEYWORD = """SELECT count(film_id)
+                            FROM film
+                            WHERE title LIKE %s """
+GET_FILMS_BY_KEYWORD = """SELECT film.film_id, film.title, category.name, film.release_year
+                          FROM film
+                                   JOIN film_category ON film_category.film_id = film.film_id
+                                   JOIN category ON film_category.category_id = category.category_id
+                          WHERE title LIKE %s
+                          ORDER BY release_year desc, film.title"""
 
-COUNT_FILMS_BY_CATEGORY_YEAR = """SELECT count(film.film_id) FROM film 
-                                JOIN film_category ON film_category.film_id = film.film_id
-                                JOIN category ON film_category.category_id = category.category_id
-                                WHERE category.category_id = %s AND film.release_year BETWEEN %s AND %s
-                                ORDER BY release_year DESC"""
+COUNT_FILMS_BY_CATEGORY_YEAR = """SELECT count(film.film_id)
+                                  FROM film
+                                           JOIN film_category ON film_category.film_id = film.film_id
+                                           JOIN category ON film_category.category_id = category.category_id
+                                  WHERE category.category_id = %s
+                                    AND film.release_year BETWEEN %s AND %s
+                                  ORDER BY release_year DESC"""
 
-GET_FILMS_BY_CATEGORY_YEAR = """SELECT film.film_id, film.title, category.name, film.release_year 
-                                FROM film 
-                                JOIN film_category ON film_category.film_id = film.film_id
-                                JOIN category ON film_category.category_id = category.category_id
-                                WHERE category.category_id = %s AND film.release_year BETWEEN %s AND %s
-                                ORDER BY release_year DESC"""
+GET_FILMS_BY_CATEGORY_YEAR = """SELECT film.film_id, film.title, category.name, film.release_year
+                                FROM film
+                                         JOIN film_category ON film_category.film_id = film.film_id
+                                         JOIN category ON film_category.category_id = category.category_id
+                                WHERE category.category_id = %s
+                                  AND film.release_year BETWEEN %s AND %s
+                                ORDER BY release_year DESC, film.title"""
+
+GET_MIN_MAX_YEAR = """SELECT MIN(release_year), MAX(release_year)
+                      FROM film
+                               JOIN film_category ON film_category.film_id = film.film_id
+                               JOIN category ON film_category.category_id = category.category_id
+                      WHERE category.category_id = %s"""
 
 
 def get_category_code(data):
@@ -50,16 +51,15 @@ def get_category_code(data):
                 selected_code = code
                 genre_name = name
                 break
-    #print(selected_code)
+    # print(selected_code)
     return selected_code, genre_name
 
+
 def get_min_max_years(cursor, code):
-    """Получает минимальный и максимальный год выпуска в БД"""
-    cursor.execute("""SELECT MIN(release_year), MAX(release_year) FROM film 
-                    JOIN film_category ON film_category.film_id = film.film_id
-                    JOIN category ON film_category.category_id = category.category_id
-                    WHERE category.category_id = %s""", (code, ))
+    """Получает минимальный и максимальный год  в БД"""
+    cursor.execute(GET_MIN_MAX_YEAR, (code,))
     return cursor.fetchone()
+
 
 def custom_year(min_year, max_year):
     while True:
@@ -90,25 +90,22 @@ def custom_year(min_year, max_year):
 
 
 def execute_search(cursor, count_query, sql_query, search_pattern):
-    """Возвращает список фильмов и курсор для последующего вывода"""
-    try:
-        cursor.execute(count_query, search_pattern)
-        total_rows = cursor.fetchone()[0]
 
-        if total_rows == 0:
-            print("Фильмы не найдены")
-            return None, total_rows
+    cursor.execute(count_query, search_pattern)
+    total_rows = cursor.fetchone()[0]
 
-    #    print(f"По слову --{search_word}-- всего найдено фильмов: {total_rows}")
-        # Получаем все фильмы для следующего логирования
-        cursor.execute(sql_query, search_pattern)
-        all_films = cursor.fetchall()
-        # Получаем курсор для вывода
-        cursor.execute(sql_query, search_pattern)
-        return cursor, total_rows, all_films
-    except Exception as e:
-        print(f"Ошибка при выполнении поиска: {e}")
-        return None, 0, []
+    if total_rows == 0:
+        status = "empty"
+        print("Фильмы не найдены")
+        return total_rows, status
+
+    status = "successful"
+    print(f"Всего найдено фильмов: {total_rows}")
+    cursor.execute(sql_query, search_pattern)
+    formatter.formated_search(cursor, total_rows)
+
+    # print(total_rows, status)
+    return total_rows, status
 
 
 def search_by_keyword(cursor):
@@ -118,20 +115,24 @@ def search_by_keyword(cursor):
 
     if not search_word:
         print("Поисковый запрос не может быть пустым")
-        return None
+        return False
+
     search_pattern = (f"%{search_word}%",)
     params = {"keyword": search_word}
     result = execute_search(cursor, COUNT_FILMS_BY_KEYWORD, GET_FILMS_BY_KEYWORD, search_pattern)
+    total_rows, status = result
 
-    if result[0] is None:
-        return log_writer.create_log_data(function_name, params, 0)
+    log_data = {
+        "timestamp": datetime.datetime.now(),
+        "status": status,
+        "search_type": function_name,
+        "params": params,
+        'films_found': total_rows,
+    }
+    # print(log_data)
+    log_writer.load_statistic(connector.collection, log_data)
+    return True
 
-
-    cursor_for_display, total_rows, all_films = result
-    print(f"По слову --{search_word}-- найдено фильмов: {total_rows}")
-    formatter.formated_search(cursor_for_display, total_rows)
-
-    return log_writer.create_log_data(function_name, params, total_rows, all_films)
 
 
 
@@ -155,8 +156,7 @@ def search_by_category_year(cursor):
     search_year1, search_year2 = year1, year2
     if res not in ['y', 'н', 'yes', 'да', '']:
         search_year1, search_year2 = custom_year(year1, year2)
-
-    print(f"Будет выполнен поиск за период: {search_year1}-{search_year2}")
+    # print(f"Будет выполнен поиск за период: {search_year1}-{search_year2}")
 
     search_pattern = (selected_code, search_year1, search_year2)
     params = {
@@ -166,12 +166,15 @@ def search_by_category_year(cursor):
     }
     result = execute_search(cursor, COUNT_FILMS_BY_CATEGORY_YEAR, GET_FILMS_BY_CATEGORY_YEAR, search_pattern)
 
-    if result[0] is None:  # Если фильмы не найдены
-        return log_writer.create_log_data(function_name, params, 0)
+    total_rows, status = result
+    # print(f"По категории --{genre_name}-- {search_year1}-{search_year2} всего найдено фильмов: {total_rows}")
 
-    cursor_for_display, total_rows, all_films = result
-    print(f"По категории --{genre_name}-- {search_year1}-{search_year2} всего найдено фильмов: {total_rows}")
-    formatter.formated_search(cursor_for_display, total_rows)
-
-    return log_writer.create_log_data(function_name, params, total_rows, all_films)
-
+    log_data = {
+        "timestamp": datetime.datetime.now(),
+        "status": status,
+        "search_type": function_name,
+        "params": params,
+        'films_found': total_rows,
+    }
+    log_writer.load_statistic(connector.collection, log_data)
+    return True
